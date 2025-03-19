@@ -1,0 +1,75 @@
+import os
+import pandas as pd
+import warnings
+from sklearn.exceptions import UndefinedMetricWarning
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.multiclass import OneVsRestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+
+
+warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
+
+
+dataset_dir = "C:\\abi 4\\1st\\archive\\Genre Classification Dataset"
+  
+
+
+def load_data_from_txt(folder_path):
+    data = []
+    for file_name in os.listdir(folder_path):
+        if file_name.endswith(".txt"):
+            with open(os.path.join(folder_path, file_name), "r", encoding="utf-8") as file:
+                for line in file:
+                    parts = line.strip().split(" ::: ")
+                    if len(parts) == 4:
+                        movie_id, title_year, genre, plot = parts
+                        data.append((title_year, genre, plot))
+    return pd.DataFrame(data, columns=["title", "genre", "plot"])
+
+
+data = load_data_from_txt(dataset_dir)
+
+
+data = data.dropna(subset=['plot', 'genre'])
+
+
+X = data['plot']
+y = data['genre']
+
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+
+tfidf_vectorizer = TfidfVectorizer(stop_words='english', max_features=10000, min_df=3)
+X_train_tfidf = tfidf_vectorizer.fit_transform(X_train)
+X_test_tfidf = tfidf_vectorizer.transform(X_test)
+
+
+nb_classifier = MultinomialNB()
+lr_classifier = LogisticRegression(max_iter=1000)
+svm_classifier = OneVsRestClassifier(SVC(kernel='linear', probability=True))
+
+
+nb_classifier.fit(X_train_tfidf, y_train)
+nb_predictions = nb_classifier.predict(X_test_tfidf)
+print("Naive Bayes Classifier")
+print("Accuracy:", accuracy_score(y_test, nb_predictions))
+print(classification_report(y_test, nb_predictions, zero_division=0))
+
+
+lr_classifier.fit(X_train_tfidf, y_train)
+lr_predictions = lr_classifier.predict(X_test_tfidf)
+print("Logistic Regression Classifier")
+print("Accuracy:", accuracy_score(y_test, lr_predictions))
+print(classification_report(y_test, lr_predictions, zero_division=0))
+
+
+svm_classifier.fit(X_train_tfidf, y_train)
+svm_predictions = svm_classifier.predict(X_test_tfidf)
+print("Support Vector Machine Classifier")
+print("Accuracy:", accuracy_score(y_test, svm_predictions))
+print(classification_report(y_test, svm_predictions, zero_division=0))
